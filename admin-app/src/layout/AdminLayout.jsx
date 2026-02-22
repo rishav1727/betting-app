@@ -1,96 +1,144 @@
-import { NavLink, useNavigate } from "react-router-dom"
-import { useState } from "react"
-import { supabase } from "../lib/supabase"
+import { NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
 
 export default function AdminLayout({ children }) {
 
-  const [collapsed, setCollapsed] = useState(false)
-  const navigate = useNavigate()
-
-  const menu = [
-    { name: "Dashboard", icon: "📊", path: "/dashboard" },
-    { name: "Markets", icon: "🎯", path: "/markets" },
-    { name: "Users", icon: "👥", path: "/users" },
-    { name: "Results", icon: "🏆", path: "/results" },
-  ]
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
 
   const logout = async () => {
-    await supabase.auth.signOut()
-    navigate("/")
-  }
+    await supabase.auth.signOut();
+    navigate("/");
+  };
 
   return (
-    <div className="flex min-h-screen w-full bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 text-white">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 text-white">
 
-      {/* Sidebar */}
+      {/* ================= SIDEBAR ================= */}
       <div
-        className={`bg-gray-900/80 backdrop-blur border-r border-gray-700 transition-all duration-300 
-        ${collapsed ? "w-20" : "w-64"} p-4`}
+        className={`${
+          collapsed ? "w-20" : "w-64"
+        } bg-gray-900/80 backdrop-blur border-r border-gray-700 transition-all duration-300 flex flex-col`}
       >
 
-        <div className="flex justify-between items-center mb-8">
-
+        {/* Logo */}
+        <div className="p-5 border-b border-gray-700 flex items-center justify-between">
           {!collapsed && (
-            <h2 className="text-xl font-bold">
-              🛠 Admin Panel
-            </h2>
+            <h2 className="text-xl font-bold">🛠 Admin</h2>
           )}
 
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="bg-gray-700 px-2 py-1 rounded"
+            className="text-gray-400 hover:text-white"
           >
             ☰
           </button>
-
         </div>
 
-        <nav className="flex flex-col gap-2">
+        {/* Menu */}
+        <nav className="flex-1 p-4 space-y-2">
 
-          {menu.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-3 p-3 rounded-lg transition
-                ${isActive ? "bg-blue-600" : "hover:bg-gray-800"}`
-              }
-            >
-              <span>{item.icon}</span>
-              {!collapsed && <span>{item.name}</span>}
-            </NavLink>
-          ))}
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) =>
+              `flex items-center gap-3 p-3 rounded-lg transition ${
+                isActive
+                  ? "bg-blue-600"
+                  : "hover:bg-gray-800"
+              }`
+            }
+          >
+            📊 {!collapsed && "Dashboard"}
+          </NavLink>
+
+          <NavLink
+            to="/markets"
+            className={({ isActive }) =>
+              `flex items-center gap-3 p-3 rounded-lg transition ${
+                isActive
+                  ? "bg-blue-600"
+                  : "hover:bg-gray-800"
+              }`
+            }
+          >
+            🎯 {!collapsed && "Markets"}
+          </NavLink>
+
+          <NavLink
+            to="/users"
+            className={({ isActive }) =>
+              `flex items-center gap-3 p-3 rounded-lg transition ${
+                isActive
+                  ? "bg-blue-600"
+                  : "hover:bg-gray-800"
+              }`
+            }
+          >
+            👥 {!collapsed && "Users"}
+          </NavLink>
+
+          <NavLink
+            to="/results"
+            className={({ isActive }) =>
+              `flex items-center gap-3 p-3 rounded-lg transition ${
+                isActive
+                  ? "bg-blue-600"
+                  : "hover:bg-gray-800"
+              }`
+            }
+          >
+            🏆 {!collapsed && "Results"}
+          </NavLink>
 
         </nav>
 
+        {/* Logout */}
+        <div className="p-4 border-t border-gray-700">
+          <button
+            onClick={logout}
+            className="w-full bg-red-500 hover:bg-red-600 p-2 rounded-lg font-semibold"
+          >
+            {!collapsed ? "Logout" : "🚪"}
+          </button>
+        </div>
+
       </div>
 
-      {/* Main Content */}
+      {/* ================= MAIN CONTENT ================= */}
       <div className="flex-1 flex flex-col">
 
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900/60">
+        {/* Top Navbar */}
+        <div className="bg-gray-900/60 backdrop-blur border-b border-gray-700 p-4 flex justify-between items-center">
 
-          <h1 className="font-semibold">
+          <h1 className="text-lg font-semibold">
             Welcome Admin 👋
           </h1>
 
-          <button
-            onClick={logout}
-            className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+
+            <div className="bg-gray-800 px-3 py-1 rounded-lg text-sm">
+              Online 🟢
+            </div>
+
+            <button
+              onClick={logout}
+              className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold"
+            >
+              Logout
+            </button>
+
+          </div>
 
         </div>
 
-        {/* Page */}
-        <div className="p-6 w-full max-w-screen-2xl mx-auto">
+        {/* Page Content */}
+        <div className="flex-1 p-6 overflow-auto">
           {children}
         </div>
 
       </div>
 
     </div>
-  )
+  );
 }

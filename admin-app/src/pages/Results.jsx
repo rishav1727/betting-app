@@ -29,12 +29,31 @@ export default function Results() {
     const { data } = await supabase
       .from("results")
       .select("*")
-      .order("declared_at", { ascending: false });
+      .order("created_at", { ascending: false });
 
     setResultsList(data || []);
   };
 
-  // Declare result
+  // Multiplier logic
+  const getMultiplier = (game) => {
+
+    switch (game) {
+      case "single":
+        return 10;
+      case "jodi":
+        return 90;
+      case "singlePanna":
+        return 150;
+      case "doublePanna":
+        return 300;
+      case "triplePanna":
+        return 600;
+      default:
+        return 0;
+    }
+  };
+
+  // Declare result + payout
   const declareResult = async () => {
 
     if (!selectedMarket || !result) {
@@ -42,16 +61,46 @@ export default function Results() {
       return;
     }
 
-    await supabase
-      .from("results")
-      .insert([
-        {
-          market_id: selectedMarket,
-          result: result
-        }
-      ]);
+    // Save result
+    await supabase.from("results").insert([
+      {
+        market_id: selectedMarket,
+        result: result
+      }
+    ]);
 
-    alert("Result Declared ✅");
+    // Get all bets for this market
+    const { data: bets } = await supabase
+      .from("bets")
+      .select("*")
+      .eq("market_id", selectedMarket);
+
+    for (let bet of bets) {
+
+      // Winner condition
+      if (bet.panna === result) {
+
+        const multiplier = getMultiplier(bet.game_type);
+        const winAmount = bet.amount * multiplier;
+
+        // Get user wallet
+        const { data: user } = await supabase
+          .from("users")
+          .select("wallet")
+          .eq("id", bet.user_id)
+          .single();
+
+        const newWallet = user.wallet + winAmount;
+
+        // Update wallet
+        await supabase
+          .from("users")
+          .update({ wallet: newWallet })
+          .eq("id", bet.user_id);
+      }
+    }
+
+    alert("Result Declared & Winners Paid ✅");
 
     setResult("");
     fetchResults();

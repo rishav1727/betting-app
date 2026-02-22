@@ -1,98 +1,60 @@
-import { useState } from "react"
-import { supabase } from "../lib/supabase"
-import { useNavigate } from "react-router-dom"
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
 
 export default function Login() {
 
-  const [phone, setPhone] = useState("")
-  const [otp, setOtp] = useState("")
-  const [step, setStep] = useState(1)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const navigate = useNavigate()
+  const login = async () => {
 
-  // Send OTP
-  const sendOTP = async () => {
-
-    const { error } =
-      await supabase.auth.signInWithOtp({
-        phone: phone
-      })
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
 
     if (error) {
-      alert(error.message)
-    } else {
-      alert("OTP Sent ✅")
-      setStep(2)
+      alert(error.message);
     }
 
-  }
-
-  // Verify OTP
-  const verifyOTP = async () => {
-
-    const { data, error } =
-      await supabase.auth.verifyOtp({
-        phone: phone,
-        token: otp,
-        type: "sms"
-      })
-
-    if (error) {
-      alert(error.message)
-    } else {
-      alert("Login Success 🎉")
-      navigate("/dashboard")
-    }
-
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-blue-950">
 
-      <div className="bg-gray-800 p-8 rounded-xl w-96 text-white">
+      <div className="bg-gray-800 p-8 rounded-xl w-96 shadow-lg text-white">
 
         <h1 className="text-2xl font-bold mb-6 text-center">
-          📱 Login with OTP
+          🔐 Admin Login
         </h1>
 
-        {step === 1 && (
-          <>
-            <input
-              placeholder="Enter Phone (+91XXXXXXXXXX)"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full p-3 rounded bg-gray-700 mb-4"
-            />
+        <div className="flex flex-col gap-4">
 
-            <button
-              onClick={sendOTP}
-              className="bg-blue-500 w-full py-3 rounded-lg"
-            >
-              Send OTP
-            </button>
-          </>
-        )}
+          <input
+            type="email"
+            placeholder="Email"
+            className="p-3 rounded bg-gray-700"
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-        {step === 2 && (
-          <>
-            <input
-              placeholder="Enter OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              className="w-full p-3 rounded bg-gray-700 mb-4"
-            />
+          <input
+            type="password"
+            placeholder="Password"
+            className="p-3 rounded bg-gray-700"
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-            <button
-              onClick={verifyOTP}
-              className="bg-green-500 w-full py-3 rounded-lg"
-            >
-              Verify OTP
-            </button>
-          </>
-        )}
+          <button
+            onClick={login}
+            className="bg-blue-600 hover:bg-blue-700 p-3 rounded font-semibold"
+          >
+            Login
+          </button>
+
+        </div>
 
       </div>
 
     </div>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-const express = require("express")
-const cors = require("cors")
 require("dotenv").config()
 
+const express = require("express")
+const cors = require("cors")
 const { createClient } = require("@supabase/supabase-js")
 
 const app = express()
@@ -9,207 +9,160 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-/* ================================
-   SUPABASE CONNECTION
-================================ */
+// ============================
+// SUPABASE CONNECTION
+// ============================
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 )
 
-/* ================================
-   ROOT
-================================ */
+// ============================
+// TEST ROUTE
+// ============================
 
 app.get("/", (req, res) => {
   res.send("API Running 🚀")
 })
 
-/* ================================
-   PLACE BET API
-================================ */
 
-app.post("/place-bet", async (req, res) => {
+// ============================
+// USERS API
+// ============================
+
+// Get all users
+app.get("/users", async (req, res) => {
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+
+  if (error) return res.status(500).json(error)
+
+  res.json(data)
+})
+
+
+// ============================
+// MARKETS API
+// ============================
+
+// Get markets
+app.get("/markets", async (req, res) => {
+
+  const { data, error } = await supabase
+    .from("markets")
+    .select("*")
+    .order("created_at")
+
+  if (error) return res.status(500).json(error)
+
+  res.json(data)
+})
+
+
+// Toggle market open/close
+app.post("/markets/toggle", async (req, res) => {
+
+  const { id, status } = req.body
+
+  const { error } = await supabase
+    .from("markets")
+    .update({ status })
+    .eq("id", id)
+
+  if (error) return res.status(500).json(error)
+
+  res.json({ success: true })
+})
+
+
+// ============================
+// BETS API
+// ============================
+
+// Place Bet
+app.post("/bets/place", async (req, res) => {
 
   const { user_id, market_id, panna, amount } = req.body
 
-  try {
-
-    // Check market
-    const { data: market } = await supabase
-      .from("markets")
-      .select("*")
-      .eq("id", market_id)
-      .single()
-
-    if (!market || !market.status || market.betting_locked)
-      return res.status(400).json({ error: "Betting closed" })
-
-    // Check user wallet
-    const { data: user } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", user_id)
-      .single()
-
-    if (!user || user.wallet < amount)
-      return res.status(400).json({ error: "Insufficient balance" })
-
-    // Deduct wallet
-    await supabase
-      .from("users")
-      .update({
-        wallet: user.wallet - amount
-      })
-      .eq("id", user_id)
-
-    // Insert bet
-    await supabase
-      .from("bets")
-      .insert({
+  const { data, error } = await supabase
+    .from("bets")
+    .insert([
+      {
         user_id,
         market_id,
         panna,
         amount
-      })
-
-    res.json({ success: true })
-
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-
-})
-
-/* ================================
-   DECLARE RESULT + WINNING SYSTEM
-================================ */
-
-app.post("/declare-result", async (req, res) => {
-
-  const { market_id, result_number } = req.body
-
-  try {
-
-    // Save result
-    await supabase
-      .from("results")
-      .insert({
-        market_id,
-        result_number
-      })
-
-    // Get all bets of this market
-    const { data: bets } = await supabase
-      .from("bets")
-      .select("*")
-      .eq("market_id", market_id)
-
-    // Winning logic
-    for (const bet of bets) {
-
-      if (bet.panna === result_number) {
-
-        const winAmount = bet.amount * 90
-
-        // Get user
-        const { data: user } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", bet.user_id)
-          .single()
-
-        // Update wallet
-        await supabase
-          .from("users")
-          .update({
-            wallet: user.wallet + winAmount
-          })
-          .eq("id", bet.user_id)
-
       }
+    ])
 
-    }
+  if (error) return res.status(500).json(error)
 
-    res.json({ success: true })
-
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-
+  res.json({
+    success: true,
+    data
+  })
 })
 
-/* ================================
-   MARKET AUTO OPEN / CLOSE SYSTEM
-================================ */
 
-setInterval(async () => {
+// Get Bets
+app.get("/bets", async (req, res) => {
 
-  const { data: markets } = await supabase
-    .from("markets")
+  const { data, error } = await supabase
+    .from("bets")
     .select("*")
 
-  if (!markets) return
+  if (error) return res.status(500).json(error)
 
-  const now = new Date()
-  const currentTime = now.toTimeString().slice(0, 5)
-
-  for (const market of markets) {
-
-    const shouldOpen =
-      currentTime >= market.open_time &&
-      currentTime < market.close_time
-
-    if (shouldOpen !== market.status) {
-
-      await supabase
-        .from("markets")
-        .update({ status: shouldOpen })
-        .eq("id", market.id)
-
-    }
-
-  }
-
-}, 30000) // every 30 seconds
-
-/* ================================
-   GET DASHBOARD STATS
-================================ */
-
-app.get("/stats", async (req, res) => {
-
-  try {
-
-    const { count: users } = await supabase
-      .from("users")
-      .select("*", { count: "exact", head: true })
-
-    const { data: bets } = await supabase
-      .from("bets")
-      .select("amount")
-
-    const totalRevenue = bets?.reduce((a, b) => a + b.amount, 0) || 0
-
-    res.json({
-      users,
-      bets: bets?.length || 0,
-      revenue: totalRevenue
-    })
-
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-
+  res.json(data)
 })
 
-/* ================================
-   SERVER START
-================================ */
 
-const PORT = process.env.PORT || 5000
+// ============================
+// RESULTS API
+// ============================
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} 🚀`)
+// Declare Result
+app.post("/results/declare", async (req, res) => {
+
+  const { market_id, winning_number } = req.body
+
+  const { error } = await supabase
+    .from("results")
+    .insert([
+      {
+        market_id,
+        winning_number
+      }
+    ])
+
+  if (error) return res.status(500).json(error)
+
+  res.json({
+    success: true
+  })
+})
+
+
+// Get Results
+app.get("/results", async (req, res) => {
+
+  const { data, error } = await supabase
+    .from("results")
+    .select("*")
+
+  if (error) return res.status(500).json(error)
+
+  res.json(data)
+})
+
+
+// ============================
+// SERVER START
+// ============================
+
+app.listen(process.env.PORT || 5000, () => {
+  console.log(`Server running on port ${process.env.PORT}`)
 })
